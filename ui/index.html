@@ -1,10 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <meta charset="utf-8">
+    <title>Display a map on a webpage</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.css" rel="stylesheet">
+    <link href="main.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <style>
+        body { margin: 0; padding: 0; }
+    </style>
 </head>
+
 <body>
-    Hi there from Moat!
+<div id="settings">
+    <div class="flex flex-col content-center justify-center h-screen">
+        <div class="flex flex-col self-center px-8 pt-6 pb-8 my-2 mb-4 bg-white rounded shadow-md max-w-7xl"
+             x-data="{
+            person : {
+              Notify: null,
+              UserName: null,
+              Msg: null
+            }}"
+             x-init="
+            fetch('localhost:8085/api/v1/notify')
+              .then(response=> {
+                if (!response.ok) alert(`Something went wrong: ${response.status} - ${response.statusText}`)
+                  return response.json()
+                })
+              .then(data => person = {
+                name: data.name,
+                email: data.email,
+                address: data.address.street,
+                city: data.address.city
+            }
+         )"
+        >
+
+            <div class="mb-6 md:flex">
+                <div class="px-3 mb-6 md:w-1/2 md:mb-0">
+                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="name">
+                        Notify
+                    </label>
+                    <input
+                            x-model="person.Notify"
+                            class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
+                            required type="text" id="name">
+                </div>
+                <div class="px-3 md:w-1/2">
+                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="email">
+                        UserName
+                    </label>
+                    <input x-model="person.UserName"
+                           class="block w-full px-4 py-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-grey-lighter"
+                           required type="email" id="email">
+                </div>
+            </div>
+            <div class="mb-6 md:flex">
+                <div class="px-3 mb-6 md:w-1/2 md:mb-0">
+                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="address">
+                        Message
+                    </label>
+                    <input x-model="person.Msg"
+                           class="block w-full px-4 py-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-grey-lighter"
+                           required type="text" id="address">
+                </div>
+            </div>
+            <div class="flex justify-end mb-2 md:flex">
+                <button @click="fetch('/update', {
+                                    method: 'POST',
+                                    body: JSON.stringify(person),
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                        }
+                                })
+                                .then(response => {
+                                    if (response.ok) alert('Updated Successfully!')
+                                    else alert(`Something went wrong: ${response.status} - ${response.statusText}`)
+                                })"
+                        class="inline-block px-6 py-2 text-xs font-medium leading-6 text-center text-white uppercase transition bg-blue-700 rounded shadow ripple hover:shadow-lg hover:bg-blue-800 focus:outline-none">
+                    Update Info
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+<div id="map"></div>
+<script>
+    // mapboxgl.accessToken = 'pk.eyJ1IjoiaXZvcnl0b2FzdCIsImEiOiJjbGdjcTBrN2cyMnlrM25xcmNwdHkxbjRwIn0.E-j_t_9n8BUhmw5Vzwjv6A';
+    // new mapboxgl.Map({
+    //   container: 'map', // container ID
+    //   style: 'mapbox://styles/mapbox/streets-v12', // style URL
+    //   center: [-74.5, 40], // starting position [lng, lat]
+    //   zoom: 9 // starting zoom
+    // });
+</script>
+
 </body>
 </html>
