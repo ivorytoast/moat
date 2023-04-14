@@ -16,8 +16,27 @@
 </head>
 
 <body>
-<div id="settings" x-data="{mapBoxApiKey: '', polygonApiKey: '', symbol: '', sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0}}">
-
+<div id="settings" x-data="{application: 'MOAT', environment: 'DEV', mapBoxApiKey: '', polygonApiKey: '', symbol: '', sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0}}">
+    <div class="flex w-full">
+        <button class="btn btn-primary" x-on:click="environment = environment === 'DEV' ? environment = 'PROD' : environment = 'DEV'">
+            Change Env
+        </button>
+        <div class="divider divider-horizontal"></div>
+        <p x-text="environment"></p>
+    </div>
+    <br>
+    <hr>
+    <br>
+    <div class="flex w-full">
+        <button class="btn btn-primary" x-on:click="application = application === 'MOAT' ? application = 'PLUM' : application = 'MOAT'">
+            Change App
+        </button>
+        <div class="divider divider-horizontal"></div>
+        <p x-text="application"></p>
+    </div>
+    <br>
+    <hr>
+    <br>
     <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="mapBoxApiKeyInput">Mapbox API Key</label>
     <input x-model="mapBoxApiKey" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="mapBoxApiKeyInput">
     <button class="btn btn-primary" x-on:click="setMapboxApiKey()">
