@@ -5,6 +5,7 @@
     <title>Display a map on a webpage</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet" type="text/css" />
     <link href="main.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,88 +16,97 @@
 </head>
 
 <body>
-<div id="settings">
-    <div class="flex flex-col content-center justify-center h-screen">
-        <div class="flex flex-col self-center px-8 pt-6 pb-8 my-2 mb-4 bg-white rounded shadow-md max-w-7xl"
-             x-data="{
-            person : {
-              Notify: null,
-              UserName: null,
-              Msg: null
-            }}"
-             x-init="
-            fetch('localhost:8085/api/v1/notify')
-              .then(response=> {
-                if (!response.ok) alert(`Something went wrong: ${response.status} - ${response.statusText}`)
-                  return response.json()
-                })
-              .then(data => person = {
-                name: data.name,
-                email: data.email,
-                address: data.address.street,
-                city: data.address.city
-            }
-         )"
-        >
+<div id="settings" x-data="{mapBoxApiKey: '', polygonApiKey: '', symbol: '', sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0}}">
 
-            <div class="mb-6 md:flex">
-                <div class="px-3 mb-6 md:w-1/2 md:mb-0">
-                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="name">
-                        Notify
-                    </label>
-                    <input
-                            x-model="person.Notify"
-                            class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
-                            required type="text" id="name">
-                </div>
-                <div class="px-3 md:w-1/2">
-                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="email">
-                        UserName
-                    </label>
-                    <input x-model="person.UserName"
-                           class="block w-full px-4 py-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-grey-lighter"
-                           required type="email" id="email">
-                </div>
-            </div>
-            <div class="mb-6 md:flex">
-                <div class="px-3 mb-6 md:w-1/2 md:mb-0">
-                    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="address">
-                        Message
-                    </label>
-                    <input x-model="person.Msg"
-                           class="block w-full px-4 py-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-grey-lighter"
-                           required type="text" id="address">
-                </div>
-            </div>
-            <div class="flex justify-end mb-2 md:flex">
-                <button @click="fetch('/update', {
-                                    method: 'POST',
-                                    body: JSON.stringify(person),
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                        }
-                                })
-                                .then(response => {
-                                    if (response.ok) alert('Updated Successfully!')
-                                    else alert(`Something went wrong: ${response.status} - ${response.statusText}`)
-                                })"
-                        class="inline-block px-6 py-2 text-xs font-medium leading-6 text-center text-white uppercase transition bg-blue-700 rounded shadow ripple hover:shadow-lg hover:bg-blue-800 focus:outline-none">
-                    Update Info
-                </button>
+    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="mapBoxApiKeyInput">Mapbox API Key</label>
+    <input x-model="mapBoxApiKey" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="mapBoxApiKeyInput">
+    <button class="btn btn-primary" x-on:click="setMapboxApiKey()">
+        Set Mapbox API Key
+    </button>
 
-            </div>
+    <br>
+    <br>
+
+    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="polygonApiKey">Polygon API Key</label>
+    <input x-model="polygonApiKey" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="polygonApiKey">
+
+    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="symbol">Symbol</label>
+    <input x-model="symbol" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="symbol">
+
+    <button class="btn btn-primary" x-on:click="sdata = await $fetchjson('https://api.polygon.io/v2/aggs/ticker/'+symbol+'/prev?adjusted=true&apiKey='+polygonApiKey, jsonPath=['results', 0])">
+        Get OHLC Data
+    </button>
+
+    <br>
+    <br>
+    <hr>
+    <br>
+
+    <div class="stats shadow">
+        <div class="stat">
+            <span class="stat-title" x-text="'Symbol: ' + symbol"></span>
+            <span class="stat-value" x-text="sdata.o"></span>
+            <span class="stat-value" x-text="sdata.c"></span>
+            <span class="stat-value" x-text="sdata.h"></span>
+            <span class="stat-value" x-text="sdata.l"></span>
+            <span class="stat-desc" x-text="'Volume: ' + sdata.v"></span>
         </div>
+
     </div>
 </div>
 <div id="map"></div>
 <script>
-    // mapboxgl.accessToken = 'pk.eyJ1IjoiaXZvcnl0b2FzdCIsImEiOiJjbGdjcTBrN2cyMnlrM25xcmNwdHkxbjRwIn0.E-j_t_9n8BUhmw5Vzwjv6A';
-    // new mapboxgl.Map({
-    //   container: 'map', // container ID
-    //   style: 'mapbox://styles/mapbox/streets-v12', // style URL
-    //   center: [-74.5, 40], // starting position [lng, lat]
-    //   zoom: 9 // starting zoom
-    // });
+    function setMapboxApiKey() {
+        mapboxgl.accessToken = document.getElementById("mapBoxApiKeyInput").value;
+        new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/streets-v12', // style URL
+            center: [-74.5, 40], // starting position [lng, lat]
+            zoom: 9 // starting zoom
+        });
+    }
+
+    document.addEventListener('alpine:init', async () => {
+        Alpine.magic('fetchjson', () => {
+            return async (url, jsonPath = [], method = "GET") => {
+                let response = await xfetch(url = url, jsonPath = jsonPath, method = method)
+                return await response;
+            }
+        })
+
+        Alpine.magic('fetch', () => {
+            return async (url, method = "GET") => {
+                let response = await xfetch(url = url, jsonPath = null, method = method)
+                return await response;
+            }
+        })
+    })
+
+    async function xfetch(url, jsonPath = [], method = 'GET') {
+        if (jsonPath.length <= 0) {
+            return fetch(url, {method: method})
+                .then((response) => response.text())
+                .then((responseText) => {
+                    return responseText
+                })
+                .catch((error) => {
+                    console.log(error)
+                });
+        } else {
+            return fetch(url, {method: method})
+                .then((response) => response.json())
+                .then((responseJson) => {
+                    let nextItem = responseJson
+                    for (let i = 0; i < jsonPath.length; i++) {
+                        nextItem = nextItem[jsonPath[i]];
+                    }
+                    return nextItem;
+                })
+                .catch((error) => {
+                    console.log(error)
+                });
+        }
+    }
 </script>
 
 </body>

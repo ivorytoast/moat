@@ -32,6 +32,12 @@ func StartGin() {
 		})
 	})
 
+	router.GET("/test", func(context *gin.Context) {
+		context.JSON(http.StatusOK, gin.H{
+			"yo": "bro",
+		})
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
