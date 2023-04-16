@@ -5,76 +5,159 @@
     <title>Display a map on a webpage</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet" type="text/css"/>
     <link href="main.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
     <style>
-        body { margin: 0; padding: 0; }
+        body {
+            margin: 0;
+            padding: 0;
+        }
     </style>
 </head>
 
 <body>
-<div id="settings" x-data="{application: 'MOAT', environment: 'DEV', mapBoxApiKey: '', polygonApiKey: '', symbol: '', sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0}}">
-    <div class="flex w-full">
-        <button class="btn btn-primary" x-on:click="environment = environment === 'DEV' ? environment = 'PROD' : environment = 'DEV'">
-            Change Env
-        </button>
-        <div class="divider divider-horizontal"></div>
-        <p x-text="environment"></p>
-    </div>
-    <br>
-    <hr>
-    <br>
-    <div class="flex w-full">
-        <button class="btn btn-primary" x-on:click="application = application === 'MOAT' ? application = 'PLUM' : application = 'MOAT'">
-            Change App
-        </button>
-        <div class="divider divider-horizontal"></div>
-        <p x-text="application"></p>
-    </div>
-    <br>
-    <hr>
-    <br>
-    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="mapBoxApiKeyInput">Mapbox API Key</label>
-    <input x-model="mapBoxApiKey" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="mapBoxApiKeyInput">
-    <button class="btn btn-primary" x-on:click="setMapboxApiKey()">
-        Set Mapbox API Key
-    </button>
-
-    <br>
-    <br>
-
-    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="polygonApiKey">Polygon API Key</label>
-    <input x-model="polygonApiKey" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="polygonApiKey">
-
-    <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="symbol">Symbol</label>
-    <input x-model="symbol" class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red" required type="text" id="symbol">
-
-    <button class="btn btn-primary" x-on:click="sdata = await $fetchjson('https://api.polygon.io/v2/aggs/ticker/'+symbol+'/prev?adjusted=true&apiKey='+polygonApiKey, jsonPath=['results', 0])">
-        Get OHLC Data
-    </button>
-
-    <br>
-    <br>
-    <hr>
-    <br>
-
-    <div class="stats shadow">
-        <div class="stat">
-            <span class="stat-title" x-text="'Symbol: ' + symbol"></span>
-            <span class="stat-value" x-text="sdata.o"></span>
-            <span class="stat-value" x-text="sdata.c"></span>
-            <span class="stat-value" x-text="sdata.h"></span>
-            <span class="stat-value" x-text="sdata.l"></span>
-            <span class="stat-desc" x-text="'Volume: ' + sdata.v"></span>
+<div x-data="{
+application: 'MOAT',
+environment: 'DEV',
+mapBoxApiKey: '',
+polygonApiKey: '',
+symbol: '',
+hedge: '',
+sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0},
+timestamps: [],
+hedgePrices: [],
+symbolPrices: [],
+}">
+    <div class="left-side">
+        <div class="flex w-full">
+            <button class="btn btn-primary"
+                    x-on:click="environment = environment === 'DEV' ? environment = 'PROD' : environment = 'DEV'">
+                Change Env
+            </button>
+            <div class="divider divider-horizontal"></div>
+            <p class="mt-3" x-text="environment"></p>
         </div>
+        <br>
+        <hr>
+        <br>
+        <div class="flex w-full">
+            <button class="btn btn-primary"
+                    x-on:click="application = application === 'MOAT' ? application = 'PLUM' : application = 'MOAT'">
+                Change App
+            </button>
+            <div class="divider divider-horizontal"></div>
+            <p class="mt-3" x-text="application"></p>
+        </div>
+        <br>
+        <hr>
+        <br>
+        <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="mapBoxApiKeyInput">Mapbox
+            API Key</label>
+        <input x-model="mapBoxApiKey"
+               class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
+               required type="text" id="mapBoxApiKeyInput">
+        <button class="btn btn-primary" x-on:click="setMapboxApiKey()">
+            Set Mapbox API Key
+        </button>
 
+        <br>
+        <br>
+
+        <!--<label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker" for="polygonApiKey">Polygon
+            API Key</label>
+        <input x-model="polygonApiKey"
+               class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
+               required type="text" id="polygonApiKey">-->
     </div>
+    <template x-if="application === 'MOAT'">
+        <div class="right-side">
+            <div>
+                <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker"
+                       for="symbol">Hedge</label>
+                <input x-model="hedge"
+                       class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
+                       required type="text" id="hedge">
+                <label class="block mb-2 text-xs font-bold tracking-wide uppercase text-grey-darker"
+                       for="symbol">Symbol</label>
+                <input x-model="symbol"
+                       class="block w-full px-4 py-3 mb-3 border rounded appearance-none bg-grey-lighter text-grey-darker border-red"
+                       required type="text" id="symbol">
+
+                <button class="btn btn-primary"
+                        x-on:click="sdata = await $fetchjson('https://api.polygon.io/v2/aggs/ticker/'+symbol+'/prev?adjusted=true&apiKey='+polygonApiKey, jsonPath=['results', 0])">
+                    Get Correlation
+                </button>
+
+                <button class="btn btn-primary"
+                        x-on:click="timestamps = await $fetchjson('http://localhost:8080/api/v0/timestamps', jsonPath=['timestamps'])">
+                    Get Times
+                </button>
+
+                <button class="btn btn-primary"
+                        x-on:click="hedgePrices = await $fetchjson('http://localhost:8080/api/v0/prices?symbol='+hedge, jsonPath=['prices'])">
+                    Get Hedge Prices
+                </button>
+
+                <button class="btn btn-primary"
+                        x-on:click="symbolPrices = await $fetchjson('http://localhost:8080/api/v0/prices?symbol='+symbol, jsonPath=['prices'])">
+                    Get Symbol Prices
+                </button>
+            </div>
+
+            <br>
+            <hr>
+            <br>
+
+            <div class="grid grid-flow-col auto-cols-max">
+                <div style="border: black solid 1px">
+                    <template x-for="timestamp in timestamps">
+                        <ul x-text="timestampsOutput(timestamp)"></ul>
+                    </template>
+                </div>
+
+                <div style="border: black solid 1px">
+                    <template x-for="price in hedgePrices">
+                        <ul x-text="pricesOutput(price)"></ul>
+                    </template>
+                </div>
+
+                <div style="border: black solid 1px">
+                    <template x-for="price in symbolPrices">
+                        <ul x-text="pricesOutput(price)"></ul>
+                    </template>
+                </div>
+            </div>
+
+            <!--            <div class="stats shadow">-->
+            <!--                <div class="stat">-->
+            <!--                    <span class="stat-title" x-text="'Symbol: ' + symbol"></span>-->
+            <!--                    <span class="stat-value" x-text="sdata.o"></span>-->
+            <!--                    <span class="stat-value" x-text="sdata.c"></span>-->
+            <!--                    <span class="stat-value" x-text="sdata.h"></span>-->
+            <!--                    <span class="stat-value" x-text="sdata.l"></span>-->
+            <!--                    <span class="stat-desc" x-text="'Volume: ' + sdata.v"></span>-->
+            <!--                </div>-->
+            <!--            </div>-->
+        </div>
+    </template>
+    <template x-if="application === 'moat'">
+        <div class="right-side">
+            moat
+        </div>
+    </template>
 </div>
-<div id="map"></div>
 <script>
+    function timestampsOutput(timestamp) {
+        return timestamp.timestamp + " -> " + timestamp.readable;
+    }
+
+    function pricesOutput(price) {
+        return price.readable + " -> " + price.price;
+    }
+
     function setMapboxApiKey() {
         mapboxgl.accessToken = document.getElementById("mapBoxApiKeyInput").value;
         new mapboxgl.Map({
@@ -104,26 +187,27 @@
     async function xfetch(url, jsonPath = [], method = 'GET') {
         if (jsonPath.length <= 0) {
             return fetch(url, {method: method})
-                .then((response) => response.text())
-                .then((responseText) => {
-                    return responseText
-                })
-                .catch((error) => {
-                    console.log(error)
-                });
+                    .then((response) => response.text())
+                    .then((responseText) => {
+                        return responseText
+                    })
+                    .catch((error) => {
+                        alert(error)
+                    });
         } else {
             return fetch(url, {method: method})
-                .then((response) => response.json())
-                .then((responseJson) => {
-                    let nextItem = responseJson
-                    for (let i = 0; i < jsonPath.length; i++) {
-                        nextItem = nextItem[jsonPath[i]];
-                    }
-                    return nextItem;
-                })
-                .catch((error) => {
-                    console.log(error)
-                });
+                    .then((response) => response.json())
+                    .then((responseJson) => {
+                        let nextItem = responseJson
+                        console.log(nextItem)
+                        for (let i = 0; i < jsonPath.length; i++) {
+                            nextItem = nextItem[jsonPath[i]];
+                        }
+                        return nextItem;
+                    })
+                    .catch((error) => {
+                        alert(error)
+                    });
         }
     }
 </script>

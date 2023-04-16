@@ -1,16 +1,16 @@
-#settings {
+.left-side {
     height: 100%;
     width: 20%;
     border: 1px solid #000;
     padding: 20px;
 }
 
-#map {
+.right-side {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 20%;
     height: 100%;
     width: 80%;
-    border: 1px solid blue;
+    padding: 20px;
 }
