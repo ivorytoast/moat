@@ -30,6 +30,7 @@ sdata: {o: 0.0, c: 0.0, h: 0.0, l: 0.0, v: 0.0},
 timestamps: [],
 hedgePrices: [],
 symbolPrices: [],
+correlations: [],
 }">
     <div class="left-side">
         <div class="flex w-full">
@@ -87,11 +88,6 @@ symbolPrices: [],
                        required type="text" id="symbol">
 
                 <button class="btn btn-primary"
-                        x-on:click="sdata = await $fetchjson('https://api.polygon.io/v2/aggs/ticker/'+symbol+'/prev?adjusted=true&apiKey='+polygonApiKey, jsonPath=['results', 0])">
-                    Get Correlation
-                </button>
-
-                <button class="btn btn-primary"
                         x-on:click="timestamps = await $fetchjson('http://localhost:8080/api/v0/timestamps', jsonPath=['timestamps'])">
                     Get Times
                 </button>
@@ -104,6 +100,11 @@ symbolPrices: [],
                 <button class="btn btn-primary"
                         x-on:click="symbolPrices = await $fetchjson('http://localhost:8080/api/v0/prices?symbol='+symbol, jsonPath=['prices'])">
                     Get Symbol Prices
+                </button>
+
+                <button class="btn btn-primary"
+                        x-on:click="correlations = await $fetchjson('http://localhost:8080/api/v0/correlations?symbol='+symbol+'&hedge='+hedge, jsonPath=['correlations'])">
+                    Get Correlations
                 </button>
             </div>
 
@@ -129,6 +130,12 @@ symbolPrices: [],
                         <ul x-text="pricesOutput(price)"></ul>
                     </template>
                 </div>
+
+                <div style="border: black solid 1px">
+                    <template x-for="correlation in correlations">
+                        <ul x-text="correlationsOutput(correlation)"></ul>
+                    </template>
+                </div>
             </div>
 
             <!--            <div class="stats shadow">-->
@@ -150,6 +157,10 @@ symbolPrices: [],
     </template>
 </div>
 <script>
+    function correlationsOutput(correlation) {
+        return correlation.hedge_price + " -> " + correlation.symbol_price + " = " + correlation.correlation;
+    }
+
     function timestampsOutput(timestamp) {
         return timestamp.timestamp + " -> " + timestamp.readable;
     }

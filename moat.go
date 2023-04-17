@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	polygon "github.com/polygon-io/client-go/rest"
 	"github.com/polygon-io/client-go/rest/models"
 	"moat/state"
@@ -35,17 +36,49 @@ func (moat Moat) GetPricesForSymbolOnTradingDay(day state.Day, symbol string) ([
 	if err != nil {
 		return nil, err
 	}
-	output := getPricesForSymbolOnTradingDayImpl(polygonResponse)
+	prices, err := getPricesForSymbolOnTradingDayImpl(polygonResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	timestamps, timestampsErr := moat.GetTimestampsForTradingDay(day)
+	if timestampsErr != nil {
+		return nil, timestampsErr
+	}
+
+	completePriceList, fillInErr := fillInEmptyPrices(timestamps, prices)
+	if fillInErr != nil {
+		return nil, fillInErr
+	}
+
+	if len(timestamps) != len(completePriceList) {
+		return nil, errors.New("the number of timestamps does not match the number of prices")
+	}
+
+	return completePriceList, nil
+}
+
+func (moat Moat) GetTimestampsForTradingDay(day state.Day) ([]state.TimestampInfo, error) {
+	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
+		Ticker:     "SPY",
+		Multiplier: 1,
+		Timespan:   models.Minute,
+		From:       models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 13, 30, 0, 0, time.UTC)),
+		To:         models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 20, 0, 0, 0, time.UTC)),
+	}.WithOrder(models.Asc).WithAdjusted(true))
+	if err != nil {
+		return nil, err
+	}
+	output := getTimestampsForTradingDayImpl(polygonResponse)
 	return output, nil
 }
 
-func getPricesForSymbolOnTradingDayImpl(polygonResponse *models.GetAggsResponse) []state.PriceInfo {
+func getPricesForSymbolOnTradingDayImpl(polygonResponse *models.GetAggsResponse) ([]state.PriceInfo, error) {
 	prices := map[string]float64{}
 	for _, agg := range polygonResponse.Results {
 		timestamp, err := agg.Timestamp.MarshalJSON()
 		if err != nil {
-			println(err.Error())
-			return nil
+			return nil, err
 		}
 		prices[string(timestamp)] = agg.Close
 	}
@@ -66,22 +99,11 @@ func getPricesForSymbolOnTradingDayImpl(polygonResponse *models.GetAggsResponse)
 		return one < two
 	})
 
-	return priceObjects
-}
-
-func (moat Moat) GetTimestampsForTradingDay(day state.Day) ([]state.TimestampInfo, error) {
-	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
-		Ticker:     "SPY",
-		Multiplier: 1,
-		Timespan:   models.Minute,
-		From:       models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 13, 30, 0, 0, time.UTC)),
-		To:         models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 20, 0, 0, 0, time.UTC)),
-	}.WithOrder(models.Asc).WithAdjusted(true))
-	if err != nil {
-		return nil, err
+	if len(priceObjects) == 0 {
+		return nil, errors.New("no prices found for symbol")
 	}
-	output := getTimestampsForTradingDayImpl(polygonResponse)
-	return output, nil
+
+	return priceObjects, nil
 }
 
 func getTimestampsForTradingDayImpl(polygonResponse *models.GetAggsResponse) []state.TimestampInfo {
@@ -111,6 +133,39 @@ func getTimestampsForTradingDayImpl(polygonResponse *models.GetAggsResponse) []s
 	})
 
 	return timestampObjects
+}
+
+func fillInEmptyPrices(timestamps []state.TimestampInfo, prices []state.PriceInfo) ([]state.PriceInfo, error) {
+	if timestamps[0].Timestamp != prices[0].Timestamp {
+		return nil, errors.New("the opening does not exist for the symbol")
+	}
+
+	priceChecks := make([]bool, len(timestamps))
+
+	pricesCounter := 0
+	for i := 0; i < len(timestamps); i++ {
+		if pricesCounter < len(prices) && timestamps[i].Timestamp == prices[pricesCounter].Timestamp {
+			priceChecks[i] = true
+			pricesCounter++
+		} else {
+			priceChecks[i] = false
+		}
+	}
+
+	counter := -1
+	completePriceList := make([]state.PriceInfo, len(priceChecks))
+	for i := 0; i < len(priceChecks) && counter < len(prices); i++ {
+		if priceChecks[i] {
+			counter++
+		}
+		completePriceList[i] = state.PriceInfo{
+			Timestamp: timestamps[i].Timestamp,
+			Readable:  timestamps[i].Readable,
+			Price:     prices[counter].Price,
+		}
+	}
+
+	return completePriceList, nil
 }
 
 func convertToEst(timestamp string) (time.Time, string) {

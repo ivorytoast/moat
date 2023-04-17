@@ -24,7 +24,6 @@ func ConfigRuntime() {
 	fmt.Printf("Running with %d CPUs\n", nuCPU)
 }
 
-// StartGin starts gin web server with setting router.
 func StartGin() {
 	moat := CreateMoatClient()
 
@@ -94,18 +93,105 @@ func StartGin() {
 			Day:   14,
 			Year:  2023,
 		}
-		prices, err := moat.GetPricesForSymbolOnTradingDay(day, symbol)
+		prices, pricesErr := moat.GetPricesForSymbolOnTradingDay(day, symbol)
 
 		res := response{
-			Prices:    prices,
+			Prices:    nil,
 			Error:     "",
 			TimeTaken: time.Now().Sub(startTime).String(),
 		}
 
-		if err != nil {
-			res.Error = err.Error()
+		if pricesErr != nil {
+			res.Error = pricesErr.Error()
 			context.JSON(http.StatusOK, res)
 		}
+
+		res.Prices = prices
+		context.JSON(http.StatusOK, res)
+	})
+
+	router.GET("/api/v0/correlations", func(context *gin.Context) {
+		symbol := context.Query("symbol")
+		hedge := context.Query("hedge")
+		println("GET /api/v0/correlations called with query param 'symbol' as: " + symbol + " and 'hedge' as: " + hedge)
+
+		startTime := time.Now()
+
+		type response struct {
+			Correlations []state.CorrelationInfo `json:"correlations"`
+			Error        string                  `json:"error"`
+			TimeTaken    string                  `json:"time_taken"`
+		}
+
+		day := state.Day{
+			Month: 4,
+			Day:   14,
+			Year:  2023,
+		}
+
+		timestamps, timestampsErr := moat.GetTimestampsForTradingDay(day)
+		if timestampsErr != nil {
+			context.JSON(http.StatusOK, response{
+				Correlations: nil,
+				Error:        timestampsErr.Error(),
+				TimeTaken:    time.Now().Sub(startTime).String(),
+			})
+			return
+		}
+
+		symbolPrices, symbolErr := moat.GetPricesForSymbolOnTradingDay(day, symbol)
+		if symbolErr != nil {
+			context.JSON(http.StatusOK, response{
+				Correlations: nil,
+				Error:        symbolErr.Error(),
+				TimeTaken:    time.Now().Sub(startTime).String(),
+			})
+			return
+		}
+
+		hedgePrices, hedgeErr := moat.GetPricesForSymbolOnTradingDay(day, hedge)
+		if hedgeErr != nil {
+			context.JSON(http.StatusOK, response{
+				Correlations: nil,
+				Error:        hedgeErr.Error(),
+				TimeTaken:    time.Now().Sub(startTime).String(),
+			})
+			return
+		}
+
+		if len(symbolPrices) != len(hedgePrices) || len(timestamps) != len(symbolPrices) {
+			context.JSON(http.StatusOK, response{
+				Correlations: nil,
+				Error:        "the timestamps, symbol, and hedge do not have the same amount of prices",
+				TimeTaken:    time.Now().Sub(startTime).String(),
+			})
+			return
+		}
+
+		res := response{
+			Correlations: nil,
+			Error:        "",
+			TimeTaken:    time.Now().Sub(startTime).String(),
+		}
+
+		for i := 0; i < len(timestamps); i++ {
+
+			if symbolPrices[i].Timestamp != timestamps[i].Timestamp || hedgePrices[i].Timestamp != timestamps[i].Timestamp {
+				res.Error = "the symbol, hedge, and timestamps do not have the same timestamps. The timestamps are: (timestamp) " + timestamps[i].Timestamp + ", (symbol) " + symbolPrices[i].Timestamp + ", (hedge) " + hedgePrices[i].Timestamp
+				context.JSON(http.StatusOK, res)
+			}
+
+			correlation := state.CorrelationInfo{
+				Timestamp:   timestamps[i].Timestamp,
+				Readable:    timestamps[i].Readable,
+				SymbolPrice: symbolPrices[i].Price,
+				HedgePrice:  hedgePrices[i].Price,
+				Correlation: symbolPrices[i].Price / hedgePrices[i].Price,
+			}
+
+			res.Correlations = append(res.Correlations, correlation)
+		}
+
 		fmt.Print(res)
 		context.JSON(http.StatusOK, res)
 	})

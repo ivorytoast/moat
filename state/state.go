@@ -11,6 +11,14 @@ type PriceInfo struct {
 	Price     float64 `json:"price"`
 }
 
+type CorrelationInfo struct {
+	Timestamp   string  `json:"timestamp"`
+	Readable    string  `json:"readable"`
+	SymbolPrice float64 `json:"symbol_price"`
+	HedgePrice  float64 `json:"hedge_price"`
+	Correlation float64 `json:"correlation"`
+}
+
 type Day struct {
 	Month int
 	Day   int
