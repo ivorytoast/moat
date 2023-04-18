@@ -55,12 +55,8 @@ func StartGin() {
 			TimeTaken  string                `json:"time_taken"`
 		}
 
-		day := state.Day{
-			Month: 4,
-			Day:   14,
-			Year:  2023,
-		}
-		timestamps, err := moat.GetTimestampsForTradingDay(day)
+		mktDate := state.NewMktDate(4, 14, 2023)
+		timestamps, err := moat.GetTimestampsForTradingDay(mktDate)
 
 		res := response{
 			Timestamps: timestamps,
@@ -88,12 +84,8 @@ func StartGin() {
 			TimeTaken string            `json:"time_taken"`
 		}
 
-		day := state.Day{
-			Month: 4,
-			Day:   14,
-			Year:  2023,
-		}
-		prices, pricesErr := moat.GetPricesForSymbolOnTradingDay(day, symbol)
+		mktDate := state.NewMktDate(4, 14, 2023)
+		prices, pricesErr := moat.GetPricesForSymbolOnTradingDay(mktDate, symbol)
 
 		res := response{
 			Prices:    nil,
@@ -123,13 +115,9 @@ func StartGin() {
 			TimeTaken    string                  `json:"time_taken"`
 		}
 
-		day := state.Day{
-			Month: 4,
-			Day:   14,
-			Year:  2023,
-		}
+		mktDate := state.NewMktDate(4, 14, 2023)
 
-		timestamps, timestampsErr := moat.GetTimestampsForTradingDay(day)
+		timestamps, timestampsErr := moat.GetTimestampsForTradingDay(mktDate)
 		if timestampsErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,
@@ -139,7 +127,7 @@ func StartGin() {
 			return
 		}
 
-		symbolPrices, symbolErr := moat.GetPricesForSymbolOnTradingDay(day, symbol)
+		symbolPrices, symbolErr := moat.GetPricesForSymbolOnTradingDay(mktDate, symbol)
 		if symbolErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,
@@ -149,7 +137,7 @@ func StartGin() {
 			return
 		}
 
-		hedgePrices, hedgeErr := moat.GetPricesForSymbolOnTradingDay(day, hedge)
+		hedgePrices, hedgeErr := moat.GetPricesForSymbolOnTradingDay(mktDate, hedge)
 		if hedgeErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,

@@ -12,20 +12,20 @@ import (
 	"time"
 )
 
-type Moat struct {
+type moat struct {
 	Context context.Context
 	Client  *polygon.Client
 }
 
-func CreateMoatClient() *Moat {
+func CreateMoatClient() *moat {
 	polygonApiKey := os.Getenv("POLYGON_API_KEY")
-	return &Moat{
+	return &moat{
 		Context: context.Background(),
 		Client:  polygon.New(polygonApiKey),
 	}
 }
 
-func (moat Moat) GetPricesForSymbolOnTradingDay(day state.Day, symbol string) ([]state.PriceInfo, error) {
+func (moat *moat) GetPricesForSymbolOnTradingDay(day *state.MktDate, symbol string) ([]state.PriceInfo, error) {
 	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
 		Ticker:     symbol,
 		Multiplier: 1,
@@ -58,7 +58,7 @@ func (moat Moat) GetPricesForSymbolOnTradingDay(day state.Day, symbol string) ([
 	return completePriceList, nil
 }
 
-func (moat Moat) GetTimestampsForTradingDay(day state.Day) ([]state.TimestampInfo, error) {
+func (moat *moat) GetTimestampsForTradingDay(day *state.MktDate) ([]state.TimestampInfo, error) {
 	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
 		Ticker:     "SPY",
 		Multiplier: 1,
