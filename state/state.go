@@ -17,11 +17,17 @@ type PriceInfo struct {
 }
 
 type CorrelationInfo struct {
-	Timestamp   string  `json:"timestamp"`
-	Readable    string  `json:"readable"`
-	SymbolPrice float64 `json:"symbol_price"`
-	HedgePrice  float64 `json:"hedge_price"`
-	Correlation float64 `json:"correlation"`
+	Timestamp              string  `json:"timestamp"`
+	Readable               string  `json:"readable"`
+	SymbolPrice            float64 `json:"symbol_price"`
+	HedgePrice             float64 `json:"hedge_price"`
+	SymbolPercentageChange float64 `json:"symbol_percentage_change"`
+	HedgePercentageChange  float64 `json:"hedge_percentage_change"`
+	SymbolPreviousClose    float64 `json:"symbol_previous_close"`
+	HedgePreviousClose     float64 `json:"hedge_previous_close"`
+	PreviousDayTimestamp   string  `json:"previous_day_timestamp"`
+	PreviousDayReadable    string  `json:"previous_day_readable"`
+	Correlation            float64 `json:"correlation"`
 }
 
 type MktDate struct {

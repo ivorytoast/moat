@@ -12,20 +12,57 @@ import (
 	"time"
 )
 
-type moat struct {
+type Moat struct {
 	Context context.Context
 	Client  *polygon.Client
 }
 
-func CreateMoatClient() *moat {
+func CreateMoatClient() *Moat {
 	polygonApiKey := os.Getenv("POLYGON_API_KEY")
-	return &moat{
+	return &Moat{
 		Context: context.Background(),
 		Client:  polygon.New(polygonApiKey),
 	}
 }
 
-func (moat *moat) GetPricesForSymbolOnTradingDay(day *state.MktDate, symbol string) ([]state.PriceInfo, error) {
+func (moat *Moat) GetClosePriceForSymbolOnTradingDay(day *state.MktDate, symbol string) (*state.PriceInfo, error) {
+	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
+		Ticker:     symbol,
+		Multiplier: 1,
+		Timespan:   models.Day,
+		From:       models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 13, 30, 0, 0, time.UTC)),
+		To:         models.Millis(time.Date(day.Year, time.Month(day.Month), day.Day, 20, 0, 0, 0, time.UTC)),
+	}.WithOrder(models.Asc).WithAdjusted(true))
+	if err != nil {
+		println("polygon.io returned an error for the specified day of " + strconv.Itoa(day.Year) + "-" + strconv.Itoa(day.Month) + "-" + strconv.Itoa(day.Day) + " and symbol " + symbol + ". The error was: " + err.Error() + ".")
+		return nil, err
+	}
+
+	if len(polygonResponse.Results) == 0 {
+		return nil, errors.New("polygon.io returned no results for the specified day of " + strconv.Itoa(day.Year) + "-" + strconv.Itoa(day.Month) + "-" + strconv.Itoa(day.Day))
+	}
+
+	if len(polygonResponse.Results) > 1 {
+		return nil, errors.New("polygon.io returned multiple results for a single day")
+	}
+
+	timestamp, err := polygonResponse.Results[0].Timestamp.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	_, readableTimestamp := convertToEst(string(timestamp))
+
+	priceInfo := &state.PriceInfo{
+		Timestamp: string(timestamp),
+		Readable:  readableTimestamp,
+		Price:     polygonResponse.Results[0].Close,
+	}
+
+	return priceInfo, nil
+}
+
+func (moat *Moat) GetPricesForSymbolOnTradingDay(day *state.MktDate, symbol string) ([]state.PriceInfo, error) {
 	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
 		Ticker:     symbol,
 		Multiplier: 1,
@@ -58,7 +95,7 @@ func (moat *moat) GetPricesForSymbolOnTradingDay(day *state.MktDate, symbol stri
 	return completePriceList, nil
 }
 
-func (moat *moat) GetTimestampsForTradingDay(day *state.MktDate) ([]state.TimestampInfo, error) {
+func (moat *Moat) GetTimestampsForTradingDay(day *state.MktDate) ([]state.TimestampInfo, error) {
 	polygonResponse, err := moat.Client.GetAggs(moat.Context, models.GetAggsParams{
 		Ticker:     "SPY",
 		Multiplier: 1,

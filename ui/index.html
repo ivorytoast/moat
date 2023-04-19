@@ -103,7 +103,7 @@ correlations: [],
                 </button>
 
                 <button class="btn btn-primary"
-                        x-on:click="correlations = await $fetchjson('http://localhost:8080/api/v0/correlations?symbol='+symbol+'&hedge='+hedge, jsonPath=['correlations'])">
+                        x-on:click="correlations = await $fetchjson('http://localhost:8080/api/v0/correlations?symbol='+symbol+'&hedge='+hedge, jsonPath=[])">
                     Get Correlations
                 </button>
             </div>
@@ -132,7 +132,13 @@ correlations: [],
                 </div>
 
                 <div style="border: black solid 1px">
-                    <template x-for="correlation in correlations">
+                    <p x-text="correlations.error"></p>
+                    <p x-text="correlations.time_taken"></p>
+                    <hr>
+                    <p x-text="correlations.total_correlation"></p>
+                    <p x-text="correlations.correlations[0].hedge_previous_close"></p>
+                    <p x-text="correlations.correlations[0].symbol_previous_close"></p>
+                    <template x-for="correlation in correlations.correlations">
                         <ul x-text="correlationsOutput(correlation)"></ul>
                     </template>
                 </div>
@@ -158,7 +164,7 @@ correlations: [],
 </div>
 <script>
     function correlationsOutput(correlation) {
-        return correlation.hedge_price + " -> " + correlation.symbol_price + " = " + correlation.correlation;
+        return correlation.hedge_price + " (" + correlation.hedge_percentage_change +  ") -> " + correlation.symbol_price + " (" + correlation.symbol_percentage_change +  ") = " + correlation.correlation;
     }
 
     function timestampsOutput(timestamp) {
@@ -198,7 +204,7 @@ correlations: [],
     async function xfetch(url, jsonPath = [], method = 'GET') {
         if (jsonPath.length <= 0) {
             return fetch(url, {method: method})
-                    .then((response) => response.text())
+                    .then((response) => response.json())
                     .then((responseText) => {
                         return responseText
                     })

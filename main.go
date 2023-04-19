@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"log"
+	"math"
 	"moat/state"
+	"moat/timeline"
 	"net/http"
 	"os"
 	"runtime"
@@ -25,7 +27,8 @@ func ConfigRuntime() {
 }
 
 func StartGin() {
-	moat := CreateMoatClient()
+	moatClient := CreateMoatClient()
+	timelineClient := timeline.CreateTimelineClient()
 
 	gin.SetMode(gin.ReleaseMode)
 
@@ -56,7 +59,7 @@ func StartGin() {
 		}
 
 		mktDate := state.NewMktDate(4, 14, 2023)
-		timestamps, err := moat.GetTimestampsForTradingDay(mktDate)
+		timestamps, err := moatClient.GetTimestampsForTradingDay(mktDate)
 
 		res := response{
 			Timestamps: timestamps,
@@ -85,7 +88,7 @@ func StartGin() {
 		}
 
 		mktDate := state.NewMktDate(4, 14, 2023)
-		prices, pricesErr := moat.GetPricesForSymbolOnTradingDay(mktDate, symbol)
+		prices, pricesErr := moatClient.GetPricesForSymbolOnTradingDay(mktDate, symbol)
 
 		res := response{
 			Prices:    nil,
@@ -110,14 +113,15 @@ func StartGin() {
 		startTime := time.Now()
 
 		type response struct {
-			Correlations []state.CorrelationInfo `json:"correlations"`
-			Error        string                  `json:"error"`
-			TimeTaken    string                  `json:"time_taken"`
+			Correlations     []state.CorrelationInfo `json:"correlations"`
+			TotalCorrelation float64                 `json:"total_correlation"`
+			Error            string                  `json:"error"`
+			TimeTaken        string                  `json:"time_taken"`
 		}
 
 		mktDate := state.NewMktDate(4, 14, 2023)
 
-		timestamps, timestampsErr := moat.GetTimestampsForTradingDay(mktDate)
+		timestamps, timestampsErr := moatClient.GetTimestampsForTradingDay(mktDate)
 		if timestampsErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,
@@ -127,7 +131,7 @@ func StartGin() {
 			return
 		}
 
-		symbolPrices, symbolErr := moat.GetPricesForSymbolOnTradingDay(mktDate, symbol)
+		symbolPrices, symbolErr := moatClient.GetPricesForSymbolOnTradingDay(mktDate, symbol)
 		if symbolErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,
@@ -137,7 +141,7 @@ func StartGin() {
 			return
 		}
 
-		hedgePrices, hedgeErr := moat.GetPricesForSymbolOnTradingDay(mktDate, hedge)
+		hedgePrices, hedgeErr := moatClient.GetPricesForSymbolOnTradingDay(mktDate, hedge)
 		if hedgeErr != nil {
 			context.JSON(http.StatusOK, response{
 				Correlations: nil,
@@ -157,30 +161,97 @@ func StartGin() {
 		}
 
 		res := response{
-			Correlations: nil,
-			Error:        "",
-			TimeTaken:    time.Now().Sub(startTime).String(),
+			Correlations:     nil,
+			Error:            "",
+			TotalCorrelation: 0.0,
+			TimeTaken:        time.Now().Sub(startTime).String(),
 		}
 
+		previousMktDate, yesterdayErr := timelineClient.Yesterday(mktDate)
+		if yesterdayErr != nil {
+			res.Error = yesterdayErr.Error()
+			context.JSON(http.StatusOK, res)
+		}
+
+		previousSymbolPriceInfo, previousSymErr := moatClient.GetClosePriceForSymbolOnTradingDay(previousMktDate, symbol)
+		if previousSymErr != nil {
+			res.Error = previousSymErr.Error()
+			context.JSON(http.StatusOK, res)
+		}
+
+		previousHedgePriceInfo, previousHedgeErr := moatClient.GetClosePriceForSymbolOnTradingDay(previousMktDate, hedge)
+		if previousHedgeErr != nil {
+			res.Error = previousHedgeErr.Error()
+			context.JSON(http.StatusOK, res)
+		}
+
+		if previousSymbolPriceInfo.Timestamp != previousHedgePriceInfo.Timestamp {
+			res.Error = "the previous day for the symbol and hedge do not have the same timestamps. The timestamps are: (symbol) " + previousSymbolPriceInfo.Timestamp + ", (hedge) " + previousHedgePriceInfo.Timestamp
+			context.JSON(http.StatusOK, res)
+		}
+
+		correlationSum := 0.0
+		correlationCounter := 0.0
+		latestCorrelation := 0.0
+		correlations := make([]state.CorrelationInfo, 0)
 		for i := 0; i < len(timestamps); i++ {
+
+			symbolPercentageChange := ((symbolPrices[i].Price - previousSymbolPriceInfo.Price) / previousSymbolPriceInfo.Price) * 100
+			hedgePercentageChange := ((hedgePrices[i].Price - previousHedgePriceInfo.Price) / previousHedgePriceInfo.Price) * 100
 
 			if symbolPrices[i].Timestamp != timestamps[i].Timestamp || hedgePrices[i].Timestamp != timestamps[i].Timestamp {
 				res.Error = "the symbol, hedge, and timestamps do not have the same timestamps. The timestamps are: (timestamp) " + timestamps[i].Timestamp + ", (symbol) " + symbolPrices[i].Timestamp + ", (hedge) " + hedgePrices[i].Timestamp
 				context.JSON(http.StatusOK, res)
 			}
 
-			correlation := state.CorrelationInfo{
-				Timestamp:   timestamps[i].Timestamp,
-				Readable:    timestamps[i].Readable,
-				SymbolPrice: symbolPrices[i].Price,
-				HedgePrice:  hedgePrices[i].Price,
-				Correlation: symbolPrices[i].Price / hedgePrices[i].Price,
+			corr := 0.0
+			if hedgePercentageChange == 0 {
+				corr = latestCorrelation
+			} else {
+				corr = symbolPercentageChange / hedgePercentageChange
+				latestCorrelation = corr
 			}
 
-			res.Correlations = append(res.Correlations, correlation)
+			if math.Abs(hedgePercentageChange) <= 0.50 || math.Abs(symbolPercentageChange) <= 0.50 {
+				corr = 0.0
+			}
+
+			if corr != 0.0 {
+				correlationSum += corr
+				correlationCounter += 1.0
+			}
+
+			correlation := state.CorrelationInfo{
+				Timestamp:              timestamps[i].Timestamp,
+				Readable:               timestamps[i].Readable,
+				SymbolPrice:            symbolPrices[i].Price,
+				HedgePrice:             hedgePrices[i].Price,
+				SymbolPercentageChange: symbolPercentageChange,
+				HedgePercentageChange:  hedgePercentageChange,
+				SymbolPreviousClose:    previousSymbolPriceInfo.Price,
+				HedgePreviousClose:     previousHedgePriceInfo.Price,
+				PreviousDayTimestamp:   previousSymbolPriceInfo.Timestamp,
+				PreviousDayReadable:    previousSymbolPriceInfo.Readable,
+				Correlation:            corr,
+			}
+
+			correlations = append(correlations, correlation)
 		}
 
-		fmt.Print(res)
+		if correlationSum == 0 {
+			res.Error = "no correlations found"
+			context.JSON(http.StatusOK, res)
+			return
+		}
+
+		if correlationCounter == 0 {
+			res.Error = "not enough data to calculate correlation"
+			context.JSON(http.StatusOK, res)
+			return
+		}
+
+		res.Correlations = correlations
+		res.TotalCorrelation = correlationSum / correlationCounter
 		context.JSON(http.StatusOK, res)
 	})
 

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Test_getTimestampsForTradingDayImpl(t *testing.T) {
+func Test_GetTimestampsForTradingDayImpl(t *testing.T) {
 	openTimestamp := models.Agg{
 		Timestamp: models.Millis(time.Date(2023, time.Month(4), 14, 13, 30, 0, 0, time.UTC)),
 	}
