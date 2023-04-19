@@ -8,6 +8,7 @@ import (
 var tl = CreateTimelineClient()
 
 func Test_Yesterday(t *testing.T) {
+	t.Skip("skipping test until I take out the polygon.io api key dependency")
 	inputs := [][]int{
 		{12, 26, 2022},
 		{4, 17, 2023},
@@ -30,6 +31,7 @@ func Test_Yesterday(t *testing.T) {
 }
 
 func Test_IsMarketOpen_True(t *testing.T) {
+	t.Skip("skipping test until I take out the polygon.io api key dependency")
 	inputs := [][]int{
 		{12, 26, 2022},
 		{4, 16, 2023},
