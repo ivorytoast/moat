@@ -5,6 +5,20 @@ import (
 	"strconv"
 )
 
+type ScheduleState struct {
+	Teams            []int            `json:"teams"`
+	DaysInSchedule   map[int][]int    `json:"days_in_schedule"`
+	TeamsToDivisions map[int]string   `json:"teams_to_divisions"`
+	Divisions        map[string][]int `json:"divisions"`
+	Games            []Game           `json:"games"`
+}
+
+type Game struct {
+	GameTime int `json:"game_time"`
+	TeamOne  int `json:"team_one"`
+	TeamTwo  int `json:"team_two"`
+}
+
 type TimestampInfo struct {
 	Timestamp string `json:"timestamp"`
 	Readable  string `json:"readable"`

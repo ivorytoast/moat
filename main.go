@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"log"
 	"math"
+	"moat/scheduler"
 	"moat/state"
 	"moat/timeline"
 	"net/http"
@@ -29,6 +30,7 @@ func ConfigRuntime() {
 func StartGin() {
 	moatClient := CreateMoatClient()
 	timelineClient := timeline.CreateTimelineClient()
+	schedulerClient := scheduler.CreateSchedulerClient()
 
 	gin.SetMode(gin.ReleaseMode)
 
@@ -252,6 +254,26 @@ func StartGin() {
 
 		res.Correlations = correlations
 		res.TotalCorrelation = correlationSum / correlationCounter
+		context.JSON(http.StatusOK, res)
+	})
+
+	router.GET("/api/v0/scheduler", func(context *gin.Context) {
+		startTime := time.Now()
+
+		schedule := schedulerClient.Schedule()
+
+		type response struct {
+			Schedule  *state.ScheduleState `json:"schedule"`
+			Error     string               `json:"error"`
+			TimeTaken string               `json:"time_taken"`
+		}
+
+		res := response{
+			Schedule:  schedule,
+			Error:     "",
+			TimeTaken: time.Now().Sub(startTime).String(),
+		}
+
 		context.JSON(http.StatusOK, res)
 	})
 
