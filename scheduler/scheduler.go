@@ -14,6 +14,9 @@ func CreateSchedulerClient() *Scheduler {
 	return &Scheduler{}
 }
 
+// TODO: All of these extra functions can be done by inputting the whole schedule struct
+// Therefore, you can simply store the whole schedule struct and pass that around
+
 func (scheduler *Scheduler) Schedule() *state.ScheduleState {
 	inputTeams := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
@@ -22,6 +25,7 @@ func (scheduler *Scheduler) Schedule() *state.ScheduleState {
 		2: {4, 5, 6},
 		3: {7, 8, 9},
 	}
+
 	teamsToDivisions := map[int]string{}
 	divisionOne := []int{1, 2, 7, 8, 9}
 	divisionTwo := []int{3, 4, 5, 6}
@@ -40,6 +44,12 @@ func (scheduler *Scheduler) Schedule() *state.ScheduleState {
 	divisions := map[string][]int{}
 	divisions["one"] = divisionOne
 	divisions["two"] = divisionTwo
+
+	teamsToSpots := map[int][]int{}
+	for _, team := range inputTeams {
+		teamsToSpots[team] = []int{}
+	}
+	teamsToSpots[1] = []int{1, 2, 4, 5, 7, 8}
 
 	games := make([]state.Game, 0)
 	teamUsed := map[int]bool{}
@@ -89,6 +99,69 @@ func (scheduler *Scheduler) Schedule() *state.ScheduleState {
 	}
 
 	return scheduleState
+}
+
+func isTeamInValidSpot(team int, spot int, asks map[int][]int) bool {
+	for _, badSpot := range asks[team] {
+		if badSpot == spot {
+			return false
+		}
+	}
+	return true
+}
+
+func validPositions(teams []int, gameTimes map[int][]int, asks map[int][]int) map[int][]int {
+	positions := map[int][]int{} // team to valid game times
+	for _, team := range teams {
+		positions[team] = []int{}
+		for _, times := range gameTimes {
+			for _, time := range times {
+				if isTeamInValidSpot(team, time, asks) {
+					positions[team] = append(positions[team], time)
+				}
+			}
+		}
+	}
+	return positions
+}
+
+// If I know which one is valid
+// And if I know where each team can play
+// I can just go through the invalid teams and switch with a team that is valid at that time slot and division
+func satisfyAsks(games []state.Game, asks map[int][]int, teamsToDivisions map[int]string, divisions map[string][]int) []state.Game {
+	outputGames := make([]state.Game, 0)
+
+	teamsNeededToSwitch := make([]int, 0)
+	for _, game := range games {
+		if !isTeamInValidSpot(game.TeamOne, game.GameTime, asks) {
+			println("team " + strconv.Itoa(game.TeamOne) + " is not in a valid spot at " + strconv.Itoa(game.GameTime))
+			teamsNeededToSwitch = append(teamsNeededToSwitch, game.TeamOne)
+			division := teamsToDivisions[game.TeamOne]
+			otherTeamsToPlayAgainst := divisions[division]
+
+			for _, otherTeam := range otherTeamsToPlayAgainst {
+				if otherTeam != game.TeamOne && isTeamInValidSpot(otherTeam, game.GameTime, asks) {
+					println("we can switch " + strconv.Itoa(game.TeamOne) + " with " + strconv.Itoa(otherTeam) + " at " + strconv.Itoa(game.GameTime))
+					//break
+				}
+			}
+		}
+		if !isTeamInValidSpot(game.TeamTwo, game.GameTime, asks) {
+			println("team " + strconv.Itoa(game.TeamTwo) + " is not in a valid spot at " + strconv.Itoa(game.GameTime))
+			teamsNeededToSwitch = append(teamsNeededToSwitch, game.TeamTwo)
+			division := teamsToDivisions[game.TeamTwo]
+			otherTeamsToPlayAgainst := divisions[division]
+
+			for _, otherTeam := range otherTeamsToPlayAgainst {
+				if otherTeam != game.TeamTwo && isTeamInValidSpot(otherTeam, game.GameTime, asks) {
+					println("we can switch " + strconv.Itoa(game.TeamTwo) + " with " + strconv.Itoa(otherTeam) + " at " + strconv.Itoa(game.GameTime))
+					//break
+				}
+			}
+		}
+	}
+
+	return outputGames
 }
 
 func shuffleTeams(inputTeams []int) []int {
